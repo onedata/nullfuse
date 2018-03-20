@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.0)
+project(nullfuse)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY build/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY build/bin)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_FILE_OFFSET_BITS=64")
+file(GLOB SOURCES "src/*.cpp")
+add_executable(nullfuse ${SOURCES})
+target_link_libraries(nullfuse fuse)
