@@ -5,7 +5,8 @@ class FSFile : public FSItem {
 	public:
 	FSFile(std::string path);
 	FSFile(std::string path, std::string initial_contents);
-	std::string *getFileContents();
-	void setFileContents(char* in);
+	std::shared_ptr<std::string> getFileContents(int);
+	std::shared_ptr<std::string> getFileContents();
+	void setFileContents(int in);
 
 };

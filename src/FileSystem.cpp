@@ -62,10 +62,16 @@ int FileSystem::do_readdir(const char * path, void *buffer, fuse_fill_dir_t fill
 }
 int FileSystem::do_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi){
 	auto fileHandle = getFileHandle(std::string(path));
-	//Copy file contents to the buffer
-	memcpy(buffer, ((FSFile*)fileHandle.get())->getFileContents()->c_str(), ((FSFile*)fileHandle.get())->getFileContents()->length());
-	//Mimic the 'read' syscall return value
-	return ((FSFile*)fileHandle.get())->getFileContents()->length()-offset;
+	auto str = ((FSFile*)fileHandle.get())->getFileContents(offset);
+	try{
+		memcpy(buffer, str->c_str(), size);
+		return size;
+	} catch(std::exception &ex){
+		std::cerr<<ex.what()<<std::endl;
+		return 0;	
+	}
+	
+	
 }
 int FileSystem::do_create(const char * path, mode_t mode, struct fuse_file_info *finfo){
 	std::stringstream ss(path);	
@@ -117,7 +123,8 @@ int FileSystem::do_mkdir(const char * path, mode_t mode){
 int FileSystem::do_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *fi){
 	try{
 		auto f = getFileHandle(std::string(path)); 
-		((FSFile*)f.get())->setFileContents((char*)buffer);
+		//auto str = std::make_shared<std::string>(size+offset,'x');
+		((FSFile*)f.get())->setFileContents(size+offset);
 	}
 	catch (std::exception &e){
 		return -EIO;
