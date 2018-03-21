@@ -67,7 +67,6 @@ int FileSystem::do_read(const char *path, char *buffer, size_t size, off_t offse
 }
 int FileSystem::do_create(const char * path, mode_t mode, struct fuse_file_info *finfo){
 	std::stringstream ss(path);	
-	std::cerr<<path;
 	std::string item;
 	std::shared_ptr<FSItem> currentFile = root;
 	std::shared_ptr<FSItem> prevFile = root;
