@@ -1,14 +1,15 @@
+/**
+ * @file FileSystem.cpp
+ * @author Rafal Grzeszczuk
+ * @copyright (C) 2018 ACK CYFRONET AGH
+ * @copyright This software is released under the Apache 2.0 license cited in
+ * 'LICENSE.txt'
+ */
 #include "FileSystem.h"
 std::shared_ptr<FSDir> FileSystem::root=nullptr;
 FileSystem::FileSystem(int argc, char ** argv){
 	
 	FileSystem::root=std::make_unique<FSDir>("/");
-	/*DEBUG directories
-	((FSDir*)getFileHandle("/").get())->createDir("BDMV");
-	((FSDir*)getFileHandle("/").get())->createDir("AACS");
-	((FSDir*)getFileHandle("/").get())->createFile("test","ala ma kota");
-	*/
-	//Set up C library callbacks...
 	static struct fuse_operations operations{};
 		operations.getattr = do_getattr;
 		operations.readdir = do_readdir;
@@ -17,12 +18,14 @@ FileSystem::FileSystem(int argc, char ** argv){
 		operations.mkdir   = do_mkdir;
 		operations.utimens = do_times;
 		operations.write   = do_write;
-	fuse_main(argc,argv,&operations, NULL);
+		operations.open    = do_open;
+		operations.truncate= do_truncate;
+	fuse_main(argc,argv,&operations, nullptr);
 }
 FileSystem::~FileSystem(){
 
 }
-//Traverse the tree and return a shared pointer to the desired file, or NULLPTR if the file doesn't exist
+//Traverse the tree and return a shared pointer to the desired file, or nullptrPTR if the file doesn't exist
 std::shared_ptr<FSItem> FileSystem::getFileHandle(std::string path){
 	std::shared_ptr<FSItem> currentFile = root;
 	if(path.compare("/")==0) return root;
@@ -38,7 +41,6 @@ std::shared_ptr<FSItem> FileSystem::getFileHandle(std::string path){
 		}
 	}
 	return currentFile;
-	
 } 
 int FileSystem::do_getattr(const char * path, struct stat *st){
 	auto fileHandle = getFileHandle(std::string(path));
@@ -51,25 +53,17 @@ int FileSystem::do_readdir(const char * path, void *buffer, fuse_fill_dir_t fill
 	auto fileHandle = getFileHandle(std::string(path));
 	std::map<std::string,std::shared_ptr<FSItem> >::iterator it;
 	//the filler function is given to us by FUSE. It fills the directory listings with the contents we want to.
-	if(filler(buffer,".",NULL,0)!=0 || filler(buffer,"..",NULL,0)!=0) 
+	if(filler(buffer,".",nullptr,0)!=0 || filler(buffer,"..",nullptr,0)!=0) 
 		return -1;
 	for(auto const& fileItem : fileHandle->getFlist()){
-		if(filler(buffer,fileItem.first.c_str(),NULL,0)!=0) 
+		if(filler(buffer,fileItem.first.c_str(),nullptr,0)!=0) 
 			return -ENOENT;
 	}
 	return 0;
 }
 int FileSystem::do_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi){
-	auto fileHandle = getFileHandle(std::string(path));
-	auto str = ((FSFile*)fileHandle.get())->getFileContents(offset);
-	try{
-		memcpy(buffer, str->c_str(), size);
-		return size;
-	} catch(std::exception &ex){
-		std::cerr<<ex.what()<<std::endl;
-		return 0;	
-	}
-
+	memset(buffer,'x',size);
+	return size;
 }
 int FileSystem::do_create(const char * path, mode_t mode, struct fuse_file_info *finfo){
 	std::stringstream ss(path);	
@@ -80,18 +74,13 @@ int FileSystem::do_create(const char * path, mode_t mode, struct fuse_file_info 
 	//tokenize the path and traverse the tree
 	while(std::getline(ss, item, '/')){
 		if(item.length()==0) continue;
-		try{
-			if(((FSDir*)currentFile.get())->subFileExists(item))
-				currentFile=currentFile->getFile(item);
-			else break;	 
-		} catch(std::exception &e){
-			std::cerr<<"cannot create file: " << e.what();
-			return -EIO;
-		}
+		if(std::dynamic_pointer_cast<FSDir>(currentFile)->subFileExists(item))
+			currentFile=currentFile->getFile(item);
+		else break;	 
 	}
 	//If we exited the traversal, but have not reached the end of the path, then at some point we hit a nonexistent dir. Return error.
 	if(std::getline(ss,item,'/')) return -ENOENT;
-	((FSDir*)currentFile.get())->createFile(item);
+	std::dynamic_pointer_cast<FSDir>(currentFile)->createFile(item);
 	return 0;
 }
 int FileSystem::do_times(const char * path, const struct timespec tv[2]){
@@ -106,24 +95,21 @@ int FileSystem::do_mkdir(const char * path, mode_t mode){
 	while(std::getline(ss, item, '/')){
 		if(item.length()==0) continue;
 		//attempt to create the directory.
-		try{
-			if(((FSDir*)currentFile.get())->subFileExists(item))
-				currentFile=currentFile->getFile(item);
-			else ((FSDir*)currentFile.get())->createDir(item);	 
-		} catch(std::exception &e){
-			return -EIO;
-		}
+		if(std::dynamic_pointer_cast<FSDir>(currentFile)->subFileExists(item))
+			currentFile=currentFile->getFile(item);
+		else (std::dynamic_pointer_cast<FSDir>(currentFile))->createDir(item);	 
 	}
-	((FSDir*)currentFile.get())->createFile(item);
+	std::dynamic_pointer_cast<FSDir>(currentFile)->createFile(item);
 	return 0;
 }
 int FileSystem::do_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *fi){
-	try{
-		auto f = getFileHandle(std::string(path)); 
-		((FSFile*)f.get())->setFileContents(size+offset);
-	}
-	catch (std::exception &e){
-		return -EIO;
-	}
+	auto f = getFileHandle(std::string(path)); 
+	std::dynamic_pointer_cast<FSFile>(f)->setFileContents(size+offset);
 	return size;
+}
+int FileSystem::do_open(const char* path, struct fuse_file_info *finfo){
+	return 0;
+}
+int FileSystem::do_truncate(const char* path, off_t off){
+	return 0;
 }

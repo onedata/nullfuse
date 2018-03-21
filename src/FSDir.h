@@ -1,3 +1,10 @@
+/**
+ * @file FSDir.h
+ * @author Rafal Grzeszczuk
+ * @copyright (C) 2018 ACK CYFRONET AGH
+ * @copyright This software is released under the Apache 2.0 license cited in
+ * 'LICENSE.txt'
+ */
 #include "FSItem.h"
 class FSDir : public FSItem {
 	public:

@@ -1,3 +1,10 @@
+/**
+ * @file main.cpp
+ * @author Rafal Grzeszczuk
+ * @copyright (C) 2018 ACK CYFRONET AGH
+ * @copyright This software is released under the Apache 2.0 license cited in
+ * 'LICENSE.txt'
+ */
 #include "FileSystem.h"
 #include "FSFile.h"
 #include <iostream>
