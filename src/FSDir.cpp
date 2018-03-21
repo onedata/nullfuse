@@ -1,6 +1,6 @@
 #include "FSDir.h"
 #include "FSFile.h"
-#include <iostream>
+
 FSDir::FSDir(std::string path):FSItem(path){
 	this->finfo.get()->st.get()->st_mode = S_IFDIR | 0755;
 	this->finfo.get()->st.get()->st_nlink = 1;

@@ -18,7 +18,6 @@ FileSystem::FileSystem(int argc, char ** argv){
 		operations.utimens = do_times;
 		operations.write   = do_write;
 	fuse_main(argc,argv,&operations, NULL);
-	
 }
 FileSystem::~FileSystem(){
 
@@ -52,7 +51,7 @@ int FileSystem::do_readdir(const char * path, void *buffer, fuse_fill_dir_t fill
 	auto fileHandle = getFileHandle(std::string(path));
 	std::map<std::string,std::shared_ptr<FSItem> >::iterator it;
 	//the filler function is given to us by FUSE. It fills the directory listings with the contents we want to.
-	if(filler(buffer,".",NULL,0)!=0 || filler(buffer,".",NULL,0)!=0) 
+	if(filler(buffer,".",NULL,0)!=0 || filler(buffer,"..",NULL,0)!=0) 
 		return -1;
 	for(auto const& fileItem : fileHandle->getFlist()){
 		if(filler(buffer,fileItem.first.c_str(),NULL,0)!=0) 
@@ -70,8 +69,7 @@ int FileSystem::do_read(const char *path, char *buffer, size_t size, off_t offse
 		std::cerr<<ex.what()<<std::endl;
 		return 0;	
 	}
-	
-	
+
 }
 int FileSystem::do_create(const char * path, mode_t mode, struct fuse_file_info *finfo){
 	std::stringstream ss(path);	
@@ -107,7 +105,7 @@ int FileSystem::do_mkdir(const char * path, mode_t mode){
 	//tokenize the path and traverse the tree
 	while(std::getline(ss, item, '/')){
 		if(item.length()==0) continue;
-		//attempt to create the directory. Works as mkdir -p.
+		//attempt to create the directory.
 		try{
 			if(((FSDir*)currentFile.get())->subFileExists(item))
 				currentFile=currentFile->getFile(item);
@@ -117,18 +115,15 @@ int FileSystem::do_mkdir(const char * path, mode_t mode){
 		}
 	}
 	((FSDir*)currentFile.get())->createFile(item);
-	
 	return 0;
 }
 int FileSystem::do_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *fi){
 	try{
 		auto f = getFileHandle(std::string(path)); 
-		//auto str = std::make_shared<std::string>(size+offset,'x');
 		((FSFile*)f.get())->setFileContents(size+offset);
 	}
 	catch (std::exception &e){
 		return -EIO;
 	}
 	return size;
-	
 }
